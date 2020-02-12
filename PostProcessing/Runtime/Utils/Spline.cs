@@ -13,7 +13,7 @@ namespace UnityEngine.Rendering.PostProcessing
         /// <summary>
         /// Precision of the curve.
         /// </summary>
-        public const int k_Precision = 128;
+        public const int k_Precision = 32;
 
         /// <summary>
         /// The inverse of the precision of the curve.
@@ -37,7 +37,8 @@ namespace UnityEngine.Rendering.PostProcessing
         AnimationCurve m_InternalLoopingCurve;
 
         // Used to track frame changes for data caching
-        int frameCount = -1;
+        [NonSerialized, HideInInspector]
+        public bool cached = false;
 
         /// <summary>
         /// An array holding pre-computed curve values.
@@ -66,13 +67,13 @@ namespace UnityEngine.Rendering.PostProcessing
         /// frame.
         /// </summary>
         /// <param name="frame">A frame number</param>
-        public void Cache(int frame)
+        public void Cache()
         {
             // Note: it would be nice to have a way to check if a curve has changed in any way, that
             // would save quite a few CPU cycles instead of having to force cache it once per frame :/
 
             // Only cache once per frame
-            if (frame == frameCount)
+            if (cached)
                 return;
 
             var length = curve.length;
@@ -94,7 +95,7 @@ namespace UnityEngine.Rendering.PostProcessing
             for (int i = 0; i < k_Precision; i++)
                 cachedData[i] = Evaluate((float)i * k_Step, length);
 
-            frameCount = Time.renderedFrameCount;
+            cached = true;
         }
 
         /// <summary>

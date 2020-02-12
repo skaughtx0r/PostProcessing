@@ -702,8 +702,12 @@ namespace UnityEngine.Rendering.PostProcessing
         /// <returns>The bundle for the effect of type <typeparam name="type"></typeparam></returns>
         public PostProcessBundle GetBundle(Type settingsType)
         {
-            Assert.IsTrue(m_Bundles.ContainsKey(settingsType), "Invalid type");
-            return m_Bundles[settingsType];
+            PostProcessBundle outBundle = null;
+            if (!m_Bundles.TryGetValue(settingsType, out outBundle))
+            {
+                Debug.LogError("Invalid Type");
+            }
+            return outBundle;
         }
 
         /// <summary>
@@ -754,6 +758,32 @@ namespace UnityEngine.Rendering.PostProcessing
                     {
                         var fromParam = target.parameters[i];
                         fromParam.Interp(fromParam, toParam, interpFactor);
+                    }
+                }
+            }
+        }
+
+        internal void OverrideSettings(List<PostProcessEffectSettings> baseSettings)
+        {
+            // Go through all settings & overriden parameters for the given volume
+            int settingsCount = baseSettings.Count;
+            for (int j = 0; j < settingsCount; j++)
+            {
+                PostProcessEffectSettings settings = baseSettings[j];
+
+                if (!settings.active)
+                    continue;
+
+                var target = GetBundle(settings.GetType()).settings;
+                int count = settings.parameters.Count;
+
+                for (int i = 0; i < count; i++)
+                {
+                    var toParam = settings.parameters[i];
+                    if (toParam.overrideState)
+                    {
+                        var fromParam = target.parameters[i];
+                        fromParam.SetValue(toParam);
                     }
                 }
             }
@@ -839,6 +869,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
         void SetupContext(PostProcessRenderContext context)
         {
+            Profiling.Profiler.BeginSample("SetupContext");
             // Juggling required when a scene with post processing is loaded from an asset bundle
             // See #1148230
             if (m_OldResources != m_Resources)
@@ -868,6 +899,8 @@ namespace UnityEngine.Rendering.PostProcessing
             // Unsafe to keep this around but we need it for OnGUI events for debug views
             // Will be removed eventually
             m_CurrentContext = context;
+
+            Profiling.Profiler.EndSample();
         }
 
         /// <summary>

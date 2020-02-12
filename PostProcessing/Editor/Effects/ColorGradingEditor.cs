@@ -653,6 +653,27 @@ namespace UnityEditor.Rendering.PostProcessing
                 {
                     Repaint();
                     GUI.changed = true;
+
+                    // Force all curves to re-cache
+                    (target as ColorGrading).masterCurve.value.cached = false;
+                    (target as ColorGrading).redCurve.value.cached = false;
+                    (target as ColorGrading).greenCurve.value.cached = false;
+                    (target as ColorGrading).blueCurve.value.cached = false;
+
+                    (target as ColorGrading).hueVsHueCurve.value.cached = false;
+                    (target as ColorGrading).hueVsSatCurve.value.cached = false;
+                    (target as ColorGrading).satVsSatCurve.value.cached = false;
+                    (target as ColorGrading).lumVsSatCurve.value.cached = false;
+
+                    (target as ColorGrading).masterCurve.value.cached = false;
+                    (target as ColorGrading).redCurve.value.cached = false;
+                    (target as ColorGrading).greenCurve.value.cached = false;
+                    (target as ColorGrading).blueCurve.value.cached = false;
+
+                    (target as ColorGrading).hueVsHueCurve.value.cached = false;
+                    (target as ColorGrading).hueVsSatCurve.value.cached = false;
+                    (target as ColorGrading).satVsSatCurve.value.cached = false;
+                    (target as ColorGrading).lumVsSatCurve.value.cached = false;
                 }
 
                 if (Event.current.type == EventType.Repaint)
