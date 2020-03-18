@@ -347,6 +347,8 @@ namespace UnityEngine.Rendering.PostProcessing
 #else
             modifiedDesc.sRGB = readWrite != RenderTextureReadWrite.Linear;
 #endif
+            if (colorFormat != RenderTextureFormat.Depth)
+                modifiedDesc.enableRandomWrite = true;
 
             return modifiedDesc;
         }
@@ -401,7 +403,7 @@ namespace UnityEngine.Rendering.PostProcessing
             if (widthOverride > 0)
                 desc.width = widthOverride;
             if (heightOverride > 0)
-                desc.height = heightOverride;
+                desc.height = heightOverride;            
 
             return RenderTexture.GetTemporary(desc);
         }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine.Assertions;
+using UnityEngine.Profiling;
 
 namespace UnityEngine.Rendering.PostProcessing
 {
@@ -213,6 +214,9 @@ namespace UnityEngine.Rendering.PostProcessing
         readonly List<PostProcessEffectRenderer> m_ActiveEffects = new List<PostProcessEffectRenderer>();
         readonly List<RenderTargetIdentifier> m_Targets = new List<RenderTargetIdentifier>();
 
+        private const CameraEvent LegacyOpaqueEvent = CameraEvent.BeforeImageEffectsOpaque; //CameraEvent.BeforeImageEffectsOpaque
+        private const CameraEvent LegacyEvent = CameraEvent.BeforeImageEffects; // CameraEvent.BeforeImageEffects
+
         void OnEnable()
         {
             Init(null);
@@ -247,8 +251,8 @@ namespace UnityEngine.Rendering.PostProcessing
 
             m_Camera.AddCommandBuffer(CameraEvent.BeforeReflections, m_LegacyCmdBufferBeforeReflections);
             m_Camera.AddCommandBuffer(CameraEvent.BeforeLighting, m_LegacyCmdBufferBeforeLighting);
-            m_Camera.AddCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, m_LegacyCmdBufferOpaque);
-            m_Camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, m_LegacyCmdBuffer);
+            m_Camera.AddCommandBuffer(LegacyOpaqueEvent, m_LegacyCmdBufferOpaque);
+            m_Camera.AddCommandBuffer(LegacyEvent, m_LegacyCmdBuffer);
 
             // Internal context used if no SRP is set
             m_CurrentContext = new PostProcessRenderContext();
@@ -256,7 +260,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
 #if UNITY_2019_1_OR_NEWER
         bool DynamicResolutionAllowsFinalBlitToCameraTarget()
-        { 
+        {
             return (!m_Camera.allowDynamicResolution || (ScalableBufferManager.heightScaleFactor == 1.0 && ScalableBufferManager.widthScaleFactor == 1.0));
         }
 #endif
@@ -264,14 +268,14 @@ namespace UnityEngine.Rendering.PostProcessing
 #if UNITY_2019_1_OR_NEWER
         // We always use a CommandBuffer to blit to the final render target
         // OnRenderImage is used only to avoid the automatic blit from the RenderTexture of Camera.forceIntoRenderTexture to the actual target
-        [ImageEffectUsesCommandBuffer]
-        void OnRenderImage(RenderTexture src, RenderTexture dst)
-        {
-            if (finalBlitToCameraTarget && DynamicResolutionAllowsFinalBlitToCameraTarget())
-                RenderTexture.active = dst; // silence warning
-            else
-                Graphics.Blit(src, dst);
-        }
+        //[ImageEffectUsesCommandBuffer]
+        //void OnRenderImage(RenderTexture src, RenderTexture dst)
+        //{
+        //    //if (finalBlitToCameraTarget && DynamicResolutionAllowsFinalBlitToCameraTarget())
+        //        //RenderTexture.active = dst; // silence warning
+        //    //else
+        //      Graphics.Blit(src, dst);
+        //}
 #endif
 
         /// <summary>
@@ -377,9 +381,9 @@ namespace UnityEngine.Rendering.PostProcessing
                 if (m_LegacyCmdBufferBeforeLighting != null)
                     m_Camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, m_LegacyCmdBufferBeforeLighting);
                 if (m_LegacyCmdBufferOpaque != null)
-                    m_Camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffectsOpaque, m_LegacyCmdBufferOpaque);
+                    m_Camera.RemoveCommandBuffer(LegacyOpaqueEvent, m_LegacyCmdBufferOpaque);
                 if (m_LegacyCmdBuffer != null)
-                    m_Camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, m_LegacyCmdBuffer);
+                    m_Camera.RemoveCommandBuffer(LegacyEvent, m_LegacyCmdBuffer);
             }
 
             temporalAntialiasing.Release();
@@ -514,6 +518,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
         void BuildCommandBuffers()
         {
+            Profiler.BeginSample("BuildCommandBuffers");
             var context = m_CurrentContext;
             var sourceFormat = m_Camera.allowHDR ? RuntimeUtilities.defaultHDRRenderTextureFormat : RenderTextureFormat.Default;
 
@@ -591,10 +596,12 @@ namespace UnityEngine.Rendering.PostProcessing
 
                 UpdateSrcDstForOpaqueOnly(ref srcTarget, ref dstTarget, context, cameraTarget, opaqueOnlyEffects + 1); // + 1 for blit
 
-                if (RequiresInitialBlit(m_Camera, context) || opaqueOnlyEffects == 1)
+                if ((RequiresInitialBlit(m_Camera, context) || opaqueOnlyEffects == 1) && !m_Camera.forceIntoRenderTexture)
                 {
+                    cmd.BeginSample("InitialBlitOpaque");
                     cmd.BuiltinBlit(context.source, context.destination, RuntimeUtilities.copyStdMaterial, stopNaNPropagation ? 1 : 0);
                     UpdateSrcDstForOpaqueOnly(ref srcTarget, ref dstTarget, context, cameraTarget, opaqueOnlyEffects);
+                    cmd.EndSample("InitialBlitOpaque");
                 }
 
                 if (isScreenSpaceReflectionsActive)
@@ -620,14 +627,15 @@ namespace UnityEngine.Rendering.PostProcessing
             // Post-transparency stack
             int tempRt = -1;
             bool forceNanKillPass = (!m_NaNKilled && stopNaNPropagation && RuntimeUtilities.isFloatingPointFormat(sourceFormat));
-            if (RequiresInitialBlit(m_Camera, context) || forceNanKillPass)
+            if ((RequiresInitialBlit(m_Camera, context) || forceNanKillPass) && !m_Camera.forceIntoRenderTexture)
             {
                 tempRt = m_TargetPool.Get();
+                m_LegacyCmdBuffer.BeginSample("InitialBlit");
                 context.GetScreenSpaceTemporaryRT(m_LegacyCmdBuffer, tempRt, 0, sourceFormat, RenderTextureReadWrite.sRGB);
                 m_LegacyCmdBuffer.BuiltinBlit(cameraTarget, tempRt, RuntimeUtilities.copyStdMaterial, stopNaNPropagation ? 1 : 0);
                 if (!m_NaNKilled)
                     m_NaNKilled = stopNaNPropagation;
-
+                m_LegacyCmdBuffer.EndSample("InitialBlit");
                 context.source = tempRt;
             }
             else
@@ -658,6 +666,8 @@ namespace UnityEngine.Rendering.PostProcessing
 
             if (tempRt > -1)
                 m_LegacyCmdBuffer.ReleaseTemporaryRT(tempRt);
+
+            Profiler.EndSample();
         }
 
         void OnPostRender()
@@ -743,8 +753,10 @@ namespace UnityEngine.Rendering.PostProcessing
         internal void OverrideSettings(List<PostProcessEffectSettings> baseSettings, float interpFactor)
         {
             // Go through all settings & overriden parameters for the given volume and lerp values
-            foreach (var settings in baseSettings)
+            int settingsCount = baseSettings.Count;
+            for (int j = 0; j < settingsCount; j++)
             {
+                PostProcessEffectSettings settings = baseSettings[j];
                 if (!settings.active)
                     continue;
 
@@ -912,6 +924,7 @@ namespace UnityEngine.Rendering.PostProcessing
         /// <param name="cmd">A command buffer to fill.</param>
         public void UpdateVolumeSystem(Camera cam, CommandBuffer cmd)
         {
+            Profiler.BeginSample("UpdateVolumeSystem");
             if (m_SettingsUpdateNeeded)
             {
                 cmd.BeginSample("VolumeBlending");
@@ -924,6 +937,7 @@ namespace UnityEngine.Rendering.PostProcessing
                 if (RuntimeUtilities.scriptableRenderPipelineActive)
                     Shader.SetGlobalFloat(ShaderIDs.RenderViewportScaleFactor, 1f);
             }
+            Profiler.EndSample();
 
             m_SettingsUpdateNeeded = false;
         }
@@ -984,13 +998,14 @@ namespace UnityEngine.Rendering.PostProcessing
 
                 if (stopNaNPropagation && !m_NaNKilled)
                 {
+                    Profiler.BeginSample("stopNaNPropagation");
                     lastTarget = m_TargetPool.Get();
                     context.GetScreenSpaceTemporaryRT(cmd, lastTarget, 0, context.sourceFormat);
                     if (context.stereoActive && context.numberOfEyes > 1)
                     {
                         if (context.stereoRenderingMode == PostProcessRenderContext.StereoRenderingMode.SinglePassInstanced)
                         {
-                            cmd.BlitFullscreenTriangleFromTexArray(context.source, lastTarget, RuntimeUtilities.copyFromTexArraySheet, 1, false, eye);
+                            cmd.BlitFullscreenTriangleFromTexArray(context.source, lastTarget, RuntimeUtilities.copyFromTexArraySheet, 1, false, eye);                            
                             preparedStereoSource = true;
                         }
                         else if (context.stereoRenderingMode == PostProcessRenderContext.StereoRenderingMode.SinglePass)
@@ -1003,6 +1018,7 @@ namespace UnityEngine.Rendering.PostProcessing
                         cmd.BlitFullscreenTriangle(context.source, lastTarget, RuntimeUtilities.copySheet, 1);
                     context.source = lastTarget;
                     m_NaNKilled = true;
+                    Profiler.EndSample();
                 }
 
                 if (!preparedStereoSource && context.numberOfEyes > 1)
@@ -1063,11 +1079,15 @@ namespace UnityEngine.Rendering.PostProcessing
                     && !breakBeforeColorGrading;
 
                 // Right before the builtin stack
+                Profiler.BeginSample("RenderInjectionPoint(PostProcessEvent.BeforeStack)");
                 if (hasBeforeStackEffects)
                     lastTarget = RenderInjectionPoint(PostProcessEvent.BeforeStack, context, "BeforeStack", lastTarget);
+                Profiler.EndSample();
 
                 // Builtin stack
+                Profiler.BeginSample("RenderBuiltins");
                 lastTarget = RenderBuiltins(context, !needsFinalPass, lastTarget, eye);
+                Profiler.EndSample();
 
                 // After the builtin stack but before the final pass (before FXAA & Dithering)
                 if (hasAfterStackEffects)
@@ -1075,7 +1095,11 @@ namespace UnityEngine.Rendering.PostProcessing
 
                 // And close with the final pass
                 if (needsFinalPass)
+                {
+                    context.destination = new RenderTargetIdentifier(BuiltinRenderTextureType.CameraTarget);
+                    context.flip = false;
                     RenderFinalPass(context, lastTarget, eye);
+                }
 
                 if (context.stereoActive)
                     context.source = cameraTexture;
@@ -1191,12 +1215,14 @@ namespace UnityEngine.Rendering.PostProcessing
 
         int RenderBuiltins(PostProcessRenderContext context, bool isFinalPass, int releaseTargetAfterUse = -1, int eye = -1)
         {
+            Profiler.BeginSample("context.propertySheets.Get");
             var uberSheet = context.propertySheets.Get(context.resources.shaders.uber);
             uberSheet.ClearKeywords();
             uberSheet.properties.Clear();
             context.uberSheet = uberSheet;
             context.autoExposureTexture = RuntimeUtilities.whiteTexture;
             context.bloomBufferNameID = -1;
+            Profiler.EndSample();
 
             if (isFinalPass && context.stereoActive && context.stereoRenderingMode == PostProcessRenderContext.StereoRenderingMode.SinglePassInstanced)
                 uberSheet.EnableKeyword("STEREO_INSTANCING_ENABLED");
@@ -1209,6 +1235,7 @@ namespace UnityEngine.Rendering.PostProcessing
 
             if (!isFinalPass)
             {
+                Profiler.BeginSample("!isFinalPass");
                 // Render to an intermediate target as this won't be the final pass
                 tempTarget = m_TargetPool.Get();
                 context.GetScreenSpaceTemporaryRT(cmd, tempTarget, 0, context.sourceFormat);
@@ -1217,36 +1244,52 @@ namespace UnityEngine.Rendering.PostProcessing
                 // Handle FXAA's keep alpha mode
                 if (antialiasingMode == Antialiasing.FastApproximateAntialiasing && !fastApproximateAntialiasing.keepAlpha)
                     uberSheet.properties.SetFloat(ShaderIDs.LumaInAlpha, 1f);
+                Profiler.EndSample();
             }
 
             // Depth of field final combination pass used to be done in Uber which led to artifacts
             // when used at the same time as Bloom (because both effects used the same source, so
             // the stronger bloom was, the more DoF was eaten away in out of focus areas)
+            Profiler.BeginSample("DepthOfField");
             int depthOfFieldTarget = RenderEffect<DepthOfField>(context, true);
+            Profiler.EndSample();
 
             // Motion blur is a separate pass - could potentially be done after DoF depending on the
             // kind of results you're looking for...
+            Profiler.BeginSample("MotionBlur");
             int motionBlurTarget = RenderEffect<MotionBlur>(context, true);
+            Profiler.EndSample();
 
             // Prepare exposure histogram if needed
             if (ShouldGenerateLogHistogram(context))
                 m_LogHistogram.Generate(context);
 
             // Uber effects
+            Profiler.BeginSample("AutoExposure");
             RenderEffect<AutoExposure>(context);
             uberSheet.properties.SetTexture(ShaderIDs.AutoExposureTex, context.autoExposureTexture);
+            Profiler.EndSample();
 
+            Profiler.BeginSample("LensDistortion");
             RenderEffect<LensDistortion>(context);
+            Profiler.EndSample();
             RenderEffect<ChromaticAberration>(context);
+            Profiler.BeginSample("Bloom");
             RenderEffect<Bloom>(context);
+            Profiler.EndSample();
             RenderEffect<Vignette>(context);
             RenderEffect<Grain>(context);
 
+            Profiler.BeginSample("ColorGrading");
             if (!breakBeforeColorGrading)
                 RenderEffect<ColorGrading>(context);
+            Profiler.EndSample();
 
             if (isFinalPass)
             {
+                context.destination = new RenderTargetIdentifier(BuiltinRenderTextureType.CameraTarget);
+                context.flip = false;
+
                 uberSheet.EnableKeyword("FINALPASS");
                 dithering.Render(context);
                 ApplyFlip(context, uberSheet.properties);
@@ -1256,6 +1299,7 @@ namespace UnityEngine.Rendering.PostProcessing
                 ApplyDefaultFlip(uberSheet.properties);
             }
 
+            Profiler.BeginSample("BlitFullscreenTriangle (uberSheet)");
             if (context.stereoActive && context.stereoRenderingMode == PostProcessRenderContext.StereoRenderingMode.SinglePassInstanced)
             {
                 uberSheet.properties.SetFloat(ShaderIDs.DepthSlice, eye);
@@ -1271,6 +1315,7 @@ namespace UnityEngine.Rendering.PostProcessing
 #endif
             else
                 cmd.BlitFullscreenTriangle(context.source, context.destination, uberSheet, 0);
+            Profiler.EndSample();
 
             context.source = context.destination;
             context.destination = finalDestination;
