@@ -716,6 +716,28 @@ namespace UnityEngine.Rendering.PostProcessing
             cmd.BlitFullscreenTriangle(source, destination);
         }
 
+        /// <summary>
+        /// Dispatches the compute shader with the desired number of threads. 
+        /// The number of dispatched thread groups will be calculated automatically.
+        /// </summary>
+        /// <param name="cmd"></param>
+        /// <param name="computeShader"></param>
+        /// <param name="kernelIndex"></param>
+        /// <param name="threadCountX"></param>
+        /// <param name="threadCountY"></param>
+        public static void Dispatch2D(this CommandBuffer cmd, ComputeShader computeShader, int kernelIndex, int threadCountX, int threadCountY)
+        {
+            uint groupSizeX, groupSizeY, groupSizeZ;
+            computeShader.GetKernelThreadGroupSizes(kernelIndex, out groupSizeX, out groupSizeY, out groupSizeZ);
+            
+            cmd.DispatchCompute(computeShader, kernelIndex, DivideByMultiple(threadCountX, groupSizeX), DivideByMultiple(threadCountY, groupSizeY), 1);
+        }
+
+        public static int DivideByMultiple(int value, uint alignment)
+        {
+            return (value + (int)alignment - 1) / (int)alignment;
+        }
+
         // TODO: Generalize the GetTemporaryRT and Blit commands in order to support
         // RT Arrays for Stereo Instancing/MultiView
 

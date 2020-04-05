@@ -3,8 +3,9 @@
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
@@ -135,4 +136,11 @@ MonoBehaviour:
     multiScaleAOUpsample: {fileID: 7200000, guid: 600d6212b59bb40409d19d750b5fd1e9,
       type: 3}
     gaussianDownsample: {fileID: 7200000, guid: 6dba4103d23a7904fbc49099355aff3e,
+      type: 3}
+    BloomExtractAndDownsampleHdr: {fileID: 7200000, guid: a032a11517f29b04b907734e419fa88c,
+      type: 3}
+    BloomDownsample4: {fileID: 7200000, guid: 657b37d7373efd34faa214606a77f4cc, type: 3}
+    BloomDownsample2: {fileID: 7200000, guid: e31be72946c760240ac36760307ffdf2, type: 3}
+    BloomBlur: {fileID: 7200000, guid: 08b26ef8007283a48b11df2369e30db4, type: 3}
+    BloomUpsampleAndBlur: {fileID: 7200000, guid: 11e3a35c91bfe80408782df022c84215,
       type: 3}

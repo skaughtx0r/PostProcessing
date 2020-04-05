@@ -1277,6 +1277,9 @@ namespace UnityEngine.Rendering.PostProcessing
             Profiler.BeginSample("Bloom");
             RenderEffect<Bloom>(context);
             Profiler.EndSample();
+            Profiler.BeginSample("ComputeBloom");
+            RenderEffect<ComputeBloom>(context);
+            Profiler.EndSample();
             RenderEffect<Vignette>(context);
             RenderEffect<Grain>(context);
 

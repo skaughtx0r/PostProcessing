@@ -214,6 +214,31 @@ namespace UnityEngine.Rendering.PostProcessing
             public ComputeShader gaussianDownsample;
 
             /// <summary>
+            /// The compute shader used to make the first bloom downsample
+            /// </summary>
+            public ComputeShader BloomExtractAndDownsampleHdr;
+
+            /// <summary>
+            /// The compute shader used for generating the 5-octave high quality steps
+            /// </summary>
+            public ComputeShader BloomDownsample4;
+
+            /// <summary>
+            /// The compute shader used for generating the 3-octave normal quality steps
+            /// </summary>
+            public ComputeShader BloomDownsample2;
+
+            /// <summary>
+            /// The compute shader used to blur while downscaling
+            /// </summary>
+            public ComputeShader BloomBlur;
+
+            /// <summary>
+            /// The compute shader used to blur while upscaling
+            /// </summary>
+            public ComputeShader BloomUpsampleAndBlur;
+
+            /// <summary>
             /// Returns a copy of this class and its content.
             /// </summary>
             /// <returns>A copy of this class and its content.</returns>

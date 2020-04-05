@@ -6,7 +6,7 @@ Shader "Hidden/PostProcessing/Uber"
 
         #pragma multi_compile __ DISTORT
         #pragma multi_compile __ CHROMATIC_ABERRATION CHROMATIC_ABERRATION_LOW
-        #pragma multi_compile __ BLOOM BLOOM_LOW
+        #pragma multi_compile __ BLOOM BLOOM_LOW BLOOM_COMPUTE
         #pragma multi_compile __ VIGNETTE
         #pragma multi_compile __ GRAIN
         #pragma multi_compile __ FINALPASS
@@ -145,10 +145,12 @@ Shader "Hidden/PostProcessing/Uber"
 
             color.rgb *= autoExposure;
 
-            #if BLOOM || BLOOM_LOW
+            #if BLOOM || BLOOM_LOW || BLOOM_COMPUTE
             {
                 #if BLOOM
                 half4 bloom = UpsampleTent(TEXTURE2D_PARAM(_BloomTex, sampler_BloomTex), uvDistorted, _BloomTex_TexelSize.xy, _Bloom_Settings.x);
+                #elif BLOOM_COMPUTE
+                half4 bloom = SAMPLE_TEXTURE2D(_BloomTex, sampler_BloomTex, UnityStereoTransformScreenSpaceTex(uvDistorted));
                 #else
                 half4 bloom = UpsampleBox(TEXTURE2D_PARAM(_BloomTex, sampler_BloomTex), uvDistorted, _BloomTex_TexelSize.xy, _Bloom_Settings.x);
                 #endif
