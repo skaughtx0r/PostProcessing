@@ -323,6 +323,15 @@ namespace UnityEngine.Rendering.PostProcessing
         public Vector4Parameter gain = new Vector4Parameter { value = new Vector4(1f, 1f, 1f, 0f) };
 
         /// <summary>
+        /// Disables updating the LUT every frame. Needs to be manually dirtied via code to update.
+        /// </summary>
+        /// <remarks>
+        /// The neutral value is <c>(1, 1, 1, 0)</c>.
+        /// </remarks>
+        [DisplayName("Disable Automatic Updates"), Tooltip("When enabled, the LUT will not be recalculated unless you call UpdateLUT() on the ColorGrading post effect via script.")]
+        public BoolParameter disableAutomaticUpdates = new BoolParameter { value = true };
+
+        /// <summary>
         /// Remaps the luminosity values.
         /// </summary>
         /// <remarks>
@@ -414,6 +423,8 @@ namespace UnityEngine.Rendering.PostProcessing
         int m_AcesKernel = -1;
         int m_CustomKernel = -1;
 
+        bool m_LUTDirty = true;
+
         readonly int m_OutputPropID = Shader.PropertyToID("_Output");
         readonly int m_SizePropID = Shader.PropertyToID("_Size");
         readonly int m_ColorBalancePropID = Shader.PropertyToID("_ColorBalance");
@@ -477,13 +488,23 @@ namespace UnityEngine.Rendering.PostProcessing
         // TODO: Use ShaderIDs for compute once the compatible APIs go in
         void RenderHDRPipeline3D(PostProcessRenderContext context)
         {
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+            {
+                m_LUTDirty = true;
+            }
+#endif
+
             // Unfortunately because AnimationCurve doesn't implement GetHashCode and we don't have
             // any reliable way to figure out if a curve data is different from another one we can't
             // skip regenerating the Lut if nothing has changed. So it has to be done on every
             // frame...
             // It's not a very expensive operation anyway (we're talking about filling a 33x33x33
             // Lut on the GPU) but every little thing helps, especially on mobile.
+            if (m_LUTDirty || !settings.disableAutomaticUpdates)
             {
+                m_LUTDirty = false;
+
                 CheckInternalLogLut();
 
                 // Lut setup
@@ -862,6 +883,11 @@ namespace UnityEngine.Rendering.PostProcessing
 
             RuntimeUtilities.Destroy(m_GradingCurves);
             m_GradingCurves = null;
+        }
+
+        public void SetDirty()
+        {
+            m_LUTDirty = true;
         }
     }
 }
