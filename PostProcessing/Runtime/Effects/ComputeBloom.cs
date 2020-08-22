@@ -141,8 +141,16 @@ namespace UnityEngine.Rendering.PostProcessing
 
             bool highQuality = settings.HighQualityBloom.value;
 
-            int kBloomWidth = context.screenWidth > 2560 ? 1280 : 640;
-            int kBloomHeight = context.screenHeight > 1440 ? 768 : 384;
+#if UNITY_2019_1_OR_NEWER
+            int screenWidth = (int)(context.screenWidth * ScalableBufferManager.widthScaleFactor);
+            int screenHeight = (int)(context.screenHeight * ScalableBufferManager.heightScaleFactor);
+#else
+            int screenWidth = context.screenWidth;
+            int screenHeight = context.screenHeight;
+#endif
+
+            int kBloomWidth = screenWidth > 2560 ? 1280 : 640;
+            int kBloomHeight = screenHeight > 1440 ? 768 : 384;
 
 #if UNITY_SWITCH
             kBloomWidth /= 2;
