@@ -537,6 +537,17 @@ namespace UnityEngine.Rendering.PostProcessing
 
             SetupContext(context);
 
+#if UNITY_2019_1_OR_NEWER
+            // Dynamic resolution fix: MainText dimensions did not contain scaling
+            Vector4 resolutionScale = new Vector4(ScalableBufferManager.widthScaleFactor, ScalableBufferManager.heightScaleFactor);
+#else
+            Vector4 resolutionScale = new Vector4(1, 1);
+#endif
+            m_LegacyCmdBufferBeforeReflections.SetGlobalVector(ShaderIDs.ResolutionScale, resolutionScale);
+            m_LegacyCmdBufferBeforeLighting.SetGlobalVector(ShaderIDs.ResolutionScale, resolutionScale);
+            m_LegacyCmdBufferOpaque.SetGlobalVector(ShaderIDs.ResolutionScale, resolutionScale);
+            m_LegacyCmdBuffer.SetGlobalVector(ShaderIDs.ResolutionScale, resolutionScale);
+
             context.command = m_LegacyCmdBufferOpaque;
             TextureLerper.instance.BeginFrame(context);
             UpdateVolumeSystem(context.camera, context.command);

@@ -25,9 +25,9 @@ Shader "Hidden/PostProcessing/FinalPass"
 
         #if FXAA_LOW
             #define FXAA_QUALITY__PRESET 12
-            #define FXAA_QUALITY_SUBPIX 1.0
-            #define FXAA_QUALITY_EDGE_THRESHOLD 0.166
-            #define FXAA_QUALITY_EDGE_THRESHOLD_MIN 0.0625
+            #define FXAA_QUALITY_SUBPIX 0.75
+            #define FXAA_QUALITY_EDGE_THRESHOLD 0.166/2
+            #define FXAA_QUALITY_EDGE_THRESHOLD_MIN 0.0625/2
         #else
             #define FXAA_QUALITY__PRESET 28
             #define FXAA_QUALITY_SUBPIX 1.0
@@ -61,7 +61,7 @@ Shader "Hidden/PostProcessing/FinalPass"
                     mainTex,                    // tex
                     mainTex,                    // fxaaConsole360TexExpBiasNegOne (unused)
                     mainTex,                    // fxaaConsole360TexExpBiasNegTwo (unused)
-                    _MainTex_TexelSize.xy,      // fxaaQualityRcpFrame
+                    _MainTex_TexelSize.xy / _ResolutionScale,      // fxaaQualityRcpFrame
                     0.0,                        // fxaaConsoleRcpFrameOpt (unused)
                     0.0,                        // fxaaConsoleRcpFrameOpt2 (unused)
                     0.0,                        // fxaaConsole360RcpFrameOpt2 (unused)

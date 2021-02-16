@@ -75,7 +75,7 @@ Shader "Hidden/PostProcessing/TemporalAntialiasing"
 
         OutputSolver Solve(float2 motion, float2 texcoord)
         {
-            const float2 k = _MainTex_TexelSize.xy;
+            const float2 k = _MainTex_TexelSize.xy / _ResolutionScale;
             float2 uv = UnityStereoClamp(texcoord - _Jitter);
 
             float4 color = SAMPLE_TEXTURE2D(_MainTex, _MainTexSampler, uv);
