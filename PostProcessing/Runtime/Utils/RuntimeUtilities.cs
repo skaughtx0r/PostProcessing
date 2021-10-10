@@ -752,6 +752,28 @@ namespace UnityEngine.Rendering.PostProcessing
             cmd.BlitFullscreenTriangle(source, destination);
         }
 
+        /// <summary>
+        /// Dispatches the compute shader with the desired number of threads. 
+        /// The number of dispatched thread groups will be calculated automatically.
+        /// </summary>
+        /// <param name="cmd"></param>
+        /// <param name="computeShader"></param>
+        /// <param name="kernelIndex"></param>
+        /// <param name="threadCountX"></param>
+        /// <param name="threadCountY"></param>
+        public static void Dispatch2D(this CommandBuffer cmd, ComputeShader computeShader, int kernelIndex, int threadCountX, int threadCountY)
+        {
+            uint groupSizeX, groupSizeY, groupSizeZ;
+            computeShader.GetKernelThreadGroupSizes(kernelIndex, out groupSizeX, out groupSizeY, out groupSizeZ);
+            
+            cmd.DispatchCompute(computeShader, kernelIndex, DivideByMultiple(threadCountX, groupSizeX), DivideByMultiple(threadCountY, groupSizeY), 1);
+        }
+
+        public static int DivideByMultiple(int value, uint alignment)
+        {
+            return (value + (int)alignment - 1) / (int)alignment;
+        }
+
         // TODO: Generalize the GetTemporaryRT and Blit commands in order to support
         // RT Arrays for Stereo Instancing/MultiView
 
@@ -1066,8 +1088,13 @@ namespace UnityEngine.Rendering.PostProcessing
             float vertical = Mathf.Tan(0.5f * Mathf.Deg2Rad * camera.fieldOfView) * near;
             float horizontal = vertical * camera.aspect;
 
+#if UNITY_2019_1_OR_NEWER
+            offset.x *= horizontal / (0.5f * (int)(camera.pixelWidth * ScalableBufferManager.widthScaleFactor));
+            offset.y *= vertical / (0.5f * (int)(camera.pixelHeight * ScalableBufferManager.heightScaleFactor));
+#else
             offset.x *= horizontal / (0.5f * camera.pixelWidth);
             offset.y *= vertical / (0.5f * camera.pixelHeight);
+#endif
 
             var matrix = camera.projectionMatrix;
 
@@ -1087,10 +1114,13 @@ namespace UnityEngine.Rendering.PostProcessing
         {
             float vertical = camera.orthographicSize;
             float horizontal = vertical * camera.aspect;
-
+#if UNITY_2019_1_OR_NEWER
+            offset.x *= horizontal / (0.5f * (int)(camera.pixelWidth * ScalableBufferManager.widthScaleFactor));
+            offset.y *= vertical / (0.5f * (int)(camera.pixelHeight * ScalableBufferManager.heightScaleFactor));
+#else
             offset.x *= horizontal / (0.5f * camera.pixelWidth);
             offset.y *= vertical / (0.5f * camera.pixelHeight);
-
+#endif
             float left = offset.x - horizontal;
             float right = offset.x + horizontal;
             float top = offset.y + vertical;
@@ -1113,8 +1143,13 @@ namespace UnityEngine.Rendering.PostProcessing
             float vertFov = Math.Abs(planes.top) + Math.Abs(planes.bottom);
             float horizFov = Math.Abs(planes.left) + Math.Abs(planes.right);
 
+#if UNITY_2019_1_OR_NEWER
+            var planeJitter = new Vector2(jitter.x * horizFov / (int)(context.screenWidth * ScalableBufferManager.widthScaleFactor),
+                                          jitter.y * vertFov / (int)(context.screenHeight * ScalableBufferManager.heightScaleFactor));
+#else
             var planeJitter = new Vector2(jitter.x * horizFov / context.screenWidth,
                                           jitter.y * vertFov / context.screenHeight);
+#endif
 
             planes.left += planeJitter.x;
             planes.right += planeJitter.x;
@@ -1126,9 +1161,9 @@ namespace UnityEngine.Rendering.PostProcessing
             return jitteredMatrix;
         }
 
-        #endregion
+#endregion
 
-        #region Reflection
+#region Reflection
 
         static IEnumerable<Type> m_AssemblyTypes;
 
@@ -1253,6 +1288,6 @@ namespace UnityEngine.Rendering.PostProcessing
             return sb.ToString();
         }
 
-        #endregion
+#endregion
     }
 }

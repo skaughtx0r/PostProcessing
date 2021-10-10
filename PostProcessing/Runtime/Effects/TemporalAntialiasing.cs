@@ -136,8 +136,11 @@ namespace UnityEngine.Rendering.PostProcessing
                     ? RuntimeUtilities.GetJitteredOrthographicProjectionMatrix(camera, jitter)
                     : RuntimeUtilities.GetJitteredPerspectiveProjectionMatrix(camera, jitter);
             }
-
+#if UNITY_2019_1_OR_NEWER
+            jitter = new Vector2(jitter.x / (int)(camera.pixelWidth * ScalableBufferManager.widthScaleFactor), jitter.y / (int)(camera.pixelHeight * ScalableBufferManager.heightScaleFactor));
+#else
             jitter = new Vector2(jitter.x / camera.pixelWidth, jitter.y / camera.pixelHeight);
+#endif
             return cameraProj;
         }
 
@@ -160,7 +163,7 @@ namespace UnityEngine.Rendering.PostProcessing
         // TODO: We'll probably need to isolate most of this for SRPs
         public void ConfigureStereoJitteredProjectionMatrices(PostProcessRenderContext context)
         {
-#if  UNITY_2017_3_OR_NEWER
+#if UNITY_2017_3_OR_NEWER
             var camera = context.camera;
             jitter = GenerateRandomOffset();
             jitter *= jitterSpread;
@@ -179,7 +182,11 @@ namespace UnityEngine.Rendering.PostProcessing
 
             // jitter has to be scaled for the actual eye texture size, not just the intermediate texture size
             // which could be double-wide in certain stereo rendering scenarios
+#if UNITY_2019_1_OR_NEWER
+            jitter = new Vector2(jitter.x / (context.screenWidth * ScalableBufferManager.widthScaleFactor), jitter.y / (context.screenHeight * ScalableBufferManager.heightScaleFactor));
+#else
             jitter = new Vector2(jitter.x / context.screenWidth, jitter.y / context.screenHeight);
+#endif
             camera.useJitteredProjectionMatrixForTransparentRendering = false;
 #endif
         }

@@ -83,6 +83,7 @@ namespace UnityEngine.Rendering.PostProcessing
                 height = m_ScaledHeights[sizeId],
                 colorFormat = format,
                 depthBufferBits = 0,
+                mipCount = 1,
                 volumeDepth = 1,
                 autoGenerateMips = false,
                 msaaSamples = 1,
@@ -106,6 +107,7 @@ namespace UnityEngine.Rendering.PostProcessing
                 depthBufferBits = 0,
                 volumeDepth = 16,
                 autoGenerateMips = false,
+                mipCount = 1,
                 msaaSamples = 1,
 #if UNITY_2019_2_OR_NEWER
                 mipCount = 1,

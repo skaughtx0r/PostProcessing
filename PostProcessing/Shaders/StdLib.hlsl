@@ -197,6 +197,7 @@ float4 _ScreenParams;             // x: width,          y: height,   z: 1+1/widt
 float4 _Time;                     // x: t/20,           y: t,        z: t*2,       w: t*3
 float4 _SinTime;                  // x: sin(t/20),      y: sin(t),   z: sin(t*2),  w: sin(t*3)
 float4 _CosTime;                  // x: cos(t/20),      y: cos(t),   z: cos(t*2),  w: cos(t*3)
+float2 _ResolutionScale;
 
 // -----------------------------------------------------------------------------
 // Std functions
