@@ -83,7 +83,6 @@ namespace UnityEngine.Rendering.PostProcessing
                 height = m_ScaledHeights[sizeId],
                 colorFormat = format,
                 depthBufferBits = 0,
-                mipCount = 1,
                 volumeDepth = 1,
                 autoGenerateMips = false,
                 msaaSamples = 1,
@@ -107,7 +106,6 @@ namespace UnityEngine.Rendering.PostProcessing
                 depthBufferBits = 0,
                 volumeDepth = 16,
                 autoGenerateMips = false,
-                mipCount = 1,
                 msaaSamples = 1,
 #if UNITY_2019_2_OR_NEWER
                 mipCount = 1,
@@ -159,9 +157,9 @@ namespace UnityEngine.Rendering.PostProcessing
             m_ScaledHeights[0] = camera.scaledPixelHeight;
 #else
             m_ScaledWidths[0] = camera.pixelWidth * (RuntimeUtilities.isSinglePassStereoEnabled ? 2 : 1);
-            m_ScaledHeights[0] = camera.pixelHeight;       
+            m_ScaledHeights[0] = camera.pixelHeight;
 #endif
-            
+
             // L1 -> L6 sizes
             for (int i = 1; i < 7; i++)
             {
@@ -465,9 +463,9 @@ namespace UnityEngine.Rendering.PostProcessing
         void CheckAOTexture(PostProcessRenderContext context)
         {
             bool AOUpdateNeeded = m_AmbientOnlyAO == null || !m_AmbientOnlyAO.IsCreated() || m_AmbientOnlyAO.width != context.width || m_AmbientOnlyAO.height != context.height;
-#if UNITY_2017_3_OR_NEWER                
+#if UNITY_2017_3_OR_NEWER
             AOUpdateNeeded = AOUpdateNeeded || m_AmbientOnlyAO.useDynamicScale != context.camera.allowDynamicResolution;
-#endif                  
+#endif
             if (AOUpdateNeeded)
             {
                 RuntimeUtilities.Destroy(m_AmbientOnlyAO);
